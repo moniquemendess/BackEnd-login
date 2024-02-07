@@ -54,7 +54,7 @@ const createPharmacy = async (req, res, next) => {
   }
 };
 //! ---------------------------------------------------------------------
-//? ----------------------------add o delete un character  --------------
+//? ----------------------------add o delete un product  --------------
 //! ---------------------------------------------------------------------
 /// aqui metemos los productos en el array del modelo de pharmacy
 const toggleProduct = async (req, res, next) => {
