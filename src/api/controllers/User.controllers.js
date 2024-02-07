@@ -346,6 +346,64 @@ const sendPassword = async (req, res, next) => {
   }
 };
 
+//? -----------------------------------------------------------------------------
+//! ------------------CAMBIO DE CONTRASEÑA CUANDO YA SE ESTA ESTA LOGADO---------
+//? -----------------------------------------------------------------------------
+
+const modifyPassword = async (req, res, next) => {
+  /** IMPORTANTE ---> REQ.USER ----> LO CREAR LOS AUTH MIDDLEWARE */
+  console.log("req.user", req.user);
+
+  try {
+    const { password, newPassword } = req.body;
+    const { _id } = req.user; // Eso es destruturing
+
+    /** comparamos la contrasela vieja sin encriptar y la encriptada  */
+    if (bcrypt.compareSync(password, req.user.password)) {
+      // comprovar la senha antiga con a del back
+      /** tenemos que encriptar la contraseña para poder guardarla en el back mongo db */
+      const newPasswordHashed = bcrypt.hashSync(newPassword, 10); // encriptar la senha nova
+
+      /** vamos a actualizar la contraseña en mongo db */
+      try {
+        await User.findByIdAndUpdate(_id, { password: newPasswordHashed });
+
+        /** TESTING EN TIEMPO REAL  */
+
+        //1) Traemos el user actualizado
+        const userUpdate = await User.findById(_id);
+
+        // 2) vamos a comparar la contraseña sin encriptar y la tenemos en el back que esta encriptada
+        if (bcrypt.compareSync(newPassword, userUpdate.password)) {
+          /// SI SON IGUALES 200 ---> UPDATE OK
+          return res.status(200).json({
+            updateUser: true,
+          });
+        } else {
+          ///NO SON IGUALES -------> 404 no son iguales
+          return res.status(404).json({
+            updateUser: false,
+          });
+        }
+      } catch (error) {
+        return res.status(404).json(error.message);
+      }
+    } else {
+      /** si las contraseñas no son iguales le mando un 404 diciendo que las contraseñas no son iguales */
+      return res.status(404).json("password dont match");
+    }
+  } catch (error) {
+    return next(error);
+    /**
+     * return next(
+      setError(
+        500,
+        error.message || 'Error general to ChangePassword with AUTH'
+      )
+    );
+     */
+  }
+};
 module.exports = {
   registerWithRedirect,
   sendCode,
@@ -355,4 +413,5 @@ module.exports = {
   autoLogin,
   changePassword,
   sendPassword,
+  modifyPassword,
 };
