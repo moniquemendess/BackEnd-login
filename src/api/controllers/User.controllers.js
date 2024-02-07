@@ -404,6 +404,124 @@ const modifyPassword = async (req, res, next) => {
      */
   }
 };
+
+//! -----------------------------------------------------------------------------
+//? ---------------------------------UPDATE--------------------------------------
+//! -----------------------------------------------------------------------------
+
+const update = async (req, res, next) => {
+  // capturamos la imagen nueva subida a cloudinary
+  let catchImg = req.file?.path;
+
+  try {
+    // actualizamos los elementos unique del modelo
+    await User.syncIndexes();
+
+    // instanciamos un nuevo objeto del modelo de user con el req.body
+    const patchUser = new User(req.body);
+
+    // si tenemos imagen metemos a la instancia del modelo esta imagen nuevo que es lo que capturamos en catchImg
+    req.file && (patchUser.image = catchImg);
+
+    /** vamos a salvaguardar info que no quiero que el usuario pueda cambiarme */
+    // AUNQUE ME PIDA CAMBIAR ESTAS CLAVES NO SE LO VOY A CAMBIAR
+    patchUser._id = req.user._id;
+    patchUser.password = req.user.password;
+    patchUser.rol = req.user.rol;
+    patchUser.confirmationCode = req.user.confirmationCode;
+    patchUser.email = req.user.email;
+    patchUser.check = req.user.check;
+
+    if (req.body?.gender) {
+      // lo comprobamos y lo metermos en patchUser con un ternario en caso de que sea true o false el resultado de la funcion
+      const resultEnum = enumOk(req.body?.gender);
+      patchUser.gender = resultEnum.check ? req.body?.gender : req.user.gender;
+    }
+
+    try {
+      /** hacemos una actualizacion NO HACER CON EL SAVE
+       * le metemos en el primer valor el id de el objeto a actualizar
+       * y en el segundo valor le metemos la info que queremos actualizar
+       */
+      await User.findByIdAndUpdate(req.user._id, patchUser);
+
+      // si nos ha metido una imagen nueva y ya la hemos actualizado pues tenemos que borrar la antigua
+      // la antigua imagen la tenemos guardada con el usuario autenticado --> req.user
+      if (req.file) deleteImgCloudinary(req.user.image);
+
+      // ++++++++++++++++++++++ TEST RUNTIME+++++++++++++++++++++++++++++++++++++++
+      /** siempre lo pprimero cuando testeamos es el elemento actualizado para comparar la info que viene
+       * del req.body
+       */
+      const updateUser = await User.findById(req.user._id);
+
+      /** sacamos las claves del objeto del req.body para saber que info nos han pedido actualizar */
+      const updateKeys = Object.keys(req.body);
+
+      // creamos un array donde guardamos los test
+      const testUpdate = [];
+
+      // recorremos el array de la info que con el req.body nos dijeron de actualizar
+      /** recordar este array lo sacamos con el Object.keys */
+
+      // updateKeys ES UN ARRAY CON LOS NOMBRES DE LAS CLAVES = ["name", "email", "rol"]
+
+      ///----------------> para todo lo diferente de la imagen ----------------------------------
+      updateKeys.forEach((item) => {
+        /** vamos a comprobar que la info actualizada sea igual que lo que me mando por el body... */
+        if (updateUser[item] === req.body[item]) {
+          /** aparte vamos a comprobar que esta info sea diferente a lo que ya teniamos en mongo subido antes */
+          if (updateUser[item] != req.user[item]) {
+            // si es diferente a lo que ya teniamos lanzamos el nombre de la clave y su valor como true en un objeto
+            // este objeto see pusea en el array que creamos arriba que guarda todos los testing en el runtime
+            testUpdate.push({
+              [item]: true,
+            });
+          } else {
+            // si son igual lo que pusearemos sera el mismo objeto que arrriba pro diciendo que la info es igual
+            testUpdate.push({
+              [item]: "sameOldInfo",
+            });
+          }
+        } else {
+          testUpdate.push({
+            [item]: false,
+          });
+        }
+      });
+
+      /// ---------------------- para la imagen ---------------------------------
+      if (req.file) {
+        /** si la imagen del user actualizado es estrictamente igual a la imagen nueva que la
+         * guardamos en el catchImg, mandamos un objeto con la clave image y su valor en true
+         * en caso contrario mandamos esta clave con su valor en false
+         */
+        updateUser.image === catchImg
+          ? testUpdate.push({
+              image: true,
+            })
+          : testUpdate.push({
+              image: false,
+            });
+      }
+
+      /** una vez finalizado el testing en el runtime vamos a mandar el usuario actualizado y el objeto
+       * con los test
+       */
+      return res.status(200).json({
+        updateUser,
+        testUpdate,
+      });
+    } catch (error) {
+      if (req.file) deleteImgCloudinary(catchImg);
+      return res.status(404).json(error.message);
+    }
+  } catch (error) {
+    if (req.file) deleteImgCloudinary(catchImg);
+    return next(error);
+  }
+};
+
 module.exports = {
   registerWithRedirect,
   sendCode,
@@ -414,4 +532,5 @@ module.exports = {
   changePassword,
   sendPassword,
   modifyPassword,
+  update,
 };
