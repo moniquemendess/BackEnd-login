@@ -21,6 +21,9 @@ app.use("/api/pharmacy/", PharmacyRoutes);
 const ProductRoutes = require("./src/api/routes/Product.routes");
 app.use("/api/product/", ProductRoutes);
 
+const MessageRoutes = require("./src/api/routes/Message.routes");
+app.use("/api/message/", MessageRoutes);
+
 const PORT = process.env.PORT;
 const MONGO_URI = process.env.MONGO_URI;
 

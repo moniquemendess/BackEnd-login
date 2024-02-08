@@ -18,6 +18,7 @@ const ProductSchema = new Schema(
     price: { type: Number },
     pharmacy: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pharmacy" }],
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
   },
   {
     timestamps: true,

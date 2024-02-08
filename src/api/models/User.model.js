@@ -44,6 +44,18 @@ const UserSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    PharmacyFav: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pharmacy" }],
+    ProductFav: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    followed: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    chats: [{ type: mongoose.Schema.Types.ObjectId, ref: "Chat" }],
+    banned: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    blockedByApp: { type: Boolean, default: false },
+    commentsPublicByOther: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+    ],
+    postedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
+    /// cuando relacionamos un modelo de con otro lo hacemos con populate y el ref a otro modelo
   },
   {
     timestamps: true,
@@ -59,6 +71,6 @@ UserSchema.pre("save", async function (next) {
   }
 });
 
-const User = mongoose.model("Usuario", UserSchema);
+const User = mongoose.model("User", UserSchema);
 
 module.exports = User;

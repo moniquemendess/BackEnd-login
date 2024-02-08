@@ -6,7 +6,9 @@ const PharmacySchema = new mongoose.Schema(
     location: { type: String, required: true },
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
     image: { type: String, required: true },
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
   },
+
   {
     timestamps: true, // data y modificacion de los datos del usuario //createdAt y updatedAt
   }
