@@ -156,5 +156,163 @@ const toggleProduct = async (req, res, next) => {
     );
   }
 };
+//! ---------------------------------------------------------------------
+//? -------------------------------get by id --------------------------
+//! ---------------------------------------------------------------------
+const getById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const pharmacyById = await Pharmacy.findById(id);
+    if (pharmacyById) {
+      return res.status(200).json(pharmacyById);
+    } else {
+      return res.status(404).json("no se ha encontrado el pharmacy");
+    }
+  } catch (error) {
+    return res.status(404).json(error.message);
+  }
+};
 
-module.exports = { createPharmacy, toggleProduct };
+//! ---------------------------------------------------------------------
+//? -------------------------------get all ------------------------------
+//! ---------------------------------------------------------------------
+
+const getAll = async (req, res, next) => {
+  try {
+    const allPharmacy = await Pharmacy.find().populate("products");
+    /** el find nos devuelve un array */
+    if (allPharmacy.length > 0) {
+      return res.status(200).json(allPharmacy);
+    } else {
+      return res.status(404).json("no se han encontrado pharmacy");
+    }
+  } catch (error) {
+    return res.status(404).json({
+      error: "error al buscar - lanzado en el catch",
+      message: error.message,
+    });
+  }
+};
+
+//! ---------------------------------------------------------------------
+//? -------------------------------get by name --------------------------
+//! ---------------------------------------------------------------------
+const getByName = async (req, res, next) => {
+  try {
+    const { name } = req.params;
+
+    /// nos devuelve un array de elementos
+    const PharmacyByName = await Pharmacy.find({ name });
+    if (PharmacyByName.length > 0) {
+      return res.status(200).json(PharmacyByName);
+    } else {
+      return res.status(404).json("no se ha encontrado");
+    }
+  } catch (error) {
+    return res.status(404).json({
+      error: "error al buscar por nombre capturado en el catch",
+      message: error.message,
+    });
+  }
+};
+
+//! ---------------------------------------------------------------------
+//? -------------------------------UPDATE -------------------------------
+//! ---------------------------------------------------------------------
+
+const update = async (req, res, next) => {
+  await Pharmacy.syncIndexes();
+  let catchImg = req.file?.path;
+  try {
+    const { id } = req.params;
+    const pharmacyById = await Pharmacy.findById(id);
+    if (pharmacyById) {
+      const oldImg = pharmacyById.image;
+
+      const customBody = {
+        _id: pharmacyById._id,
+        image: req.file?.path ? catchImg : oldImg,
+        name: req.body?.name ? req.body?.name : pharmacyById.name,
+      };
+
+      if (req.body?.gender) {
+        const resultEnum = enumOk(req.body?.gender);
+        customBody.gender = resultEnum.check
+          ? req.body?.gender
+          : pharmacyById.gender;
+      }
+
+      try {
+        await Pharmacy.findByIdAndUpdate(id, customBody);
+        if (req.file?.path) {
+          deleteImgCloudinary(oldImg);
+        }
+
+        //** ------------------------------------------------------------------- */
+        //** VAMOS A TESTEAR EN TIEMPO REAL QUE ESTO SE HAYA HECHO CORRECTAMENTE */
+        //** ------------------------------------------------------------------- */
+
+        // ......> VAMOS A BUSCAR EL ELEMENTO ACTUALIZADO POR ID
+
+        const pharmacyByIdUpdate = await Pharmacy.findById(id);
+
+        // ......> me cojer el req.body y vamos a sacarle las claves para saber que elementos nos ha dicho de actualizar
+        const elementUpdate = Object.keys(req.body);
+
+        /** vamos a hacer un objeto vacion donde meteremos los test */
+
+        let test = {};
+
+        /** vamos a recorrer las claves del body y vamos a crear un objeto con los test */
+
+        elementUpdate.forEach((item) => {
+          if (req.body[item] === pharmacyByIdUpdate[item]) {
+            test[item] = true;
+          } else {
+            test[item] = false;
+          }
+        });
+
+        if (catchImg) {
+          pharmacyByIdUpdate.image === catchImg
+            ? (test = { ...test, file: true })
+            : (test = { ...test, file: false });
+        }
+
+        /** vamos a ver que no haya ningun false. Si hay un false lanzamos un 404,
+         * si no hay ningun false entonces lanzamos un 200 porque todo esta correcte
+         */
+
+        let acc = 0;
+        for (clave in test) {
+          test[clave] == false && acc++;
+        }
+
+        if (acc > 0) {
+          return res.status(404).json({
+            dataTest: test,
+            update: false,
+          });
+        } else {
+          return res.status(200).json({
+            dataTest: test,
+            update: true,
+          });
+        }
+      } catch (error) {}
+    } else {
+      return res.status(404).json("esta pharmacy no existe");
+    }
+  } catch (error) {
+    return res.status(404).json(error);
+  }
+};
+
+module.exports = {
+  createPharmacy,
+  toggleProduct,
+  getByName,
+  update,
+  getById,
+  getAll,
+};
